@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>FormCraft</title>
+  <meta name="description" content="Fill out this smart form powered by FormCraft." />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
+  <script src="js/appwrite.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      box-sizing: border-box
+    }
+
+    body {
+      background: #f8fafc;
+      color: #0f172a;
+      min-height: 100vh
+    }
+
+    /* Step slide transition */
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(40px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    @keyframes slideInLeft {
+      from {
+        opacity: 0;
+        transform: translateX(-40px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .slide-in-right {
+      animation: slideInRight .35s cubic-bezier(.4, 0, .2, 1) both
+    }
+
+    .slide-in-left {
+      animation: slideInLeft .35s cubic-bezier(.4, 0, .2, 1) both
+    }
+
+    .fade-in {
+      animation: fadeIn .4s ease both
+    }
+
+    /* Input styles */
+    .form-input {
+      display: block;
+      width: 100%;
+      background: #fff;
+      border: 2.5px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 15px 18px;
+      font-size: 16px;
+      color: #0f172a;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      -webkit-appearance: none;
+      appearance: none
+    }
+
+    .form-input:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 4px rgba(124, 58, 237, .1)
+    }
+
+    .form-input.error {
+      border-color: #ef4444;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, .08)
+    }
+
+    .form-input::placeholder {
+      color: #94a3b8
+    }
+
+    select.form-input {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 20px;
+      padding-right: 44px
+    }
+
+    textarea.form-input {
+      resize: none;
+      min-height: 120px
+    }
+
+    /* Checkbox */
+    .cb-wrap {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 15px 18px;
+      background: #fff;
+      border: 2.5px solid #e2e8f0;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: border-color .2s
+    }
+
+    .cb-wrap:has(input:checked) {
+      border-color: #7c3aed;
+      background: #f5f3ff
+    }
+
+    .cb-input {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      accent-color: #7c3aed;
+      margin-top: 1px;
+      cursor: pointer
+    }
+
+    /* Progress dots */
+    .step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      transition: all .3s
+    }
+
+    .step-dot.active {
+      background: #7c3aed;
+      transform: scale(1.3)
+    }
+
+    .step-dot.done {
+      background: #10b981
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: opacity .2s, transform .1s;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, .3)
+    }
+
+    .btn-primary:hover {
+      opacity: .92
+    }
+
+    .btn-primary:active {
+      transform: scale(.98)
+    }
+
+    .btn-secondary {
+      background: #fff;
+      color: #374151;
+      border: 2px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .2s
+    }
+
+    .btn-secondary:hover {
+      border-color: #7c3aed;
+      color: #7c3aed
+    }
+
+    /* Success */
+    @keyframes checkPop {
+      0% {
+        transform: scale(0)
+      }
+
+      80% {
+        transform: scale(1.1)
+      }
+
+      100% {
+        transform: scale(1)
+      }
+    }
+
+    .check-anim {
+      animation: checkPop .5s cubic-bezier(.4, 0, .2, 1) both
+    }
+
+    /* Toast */
+    #toast-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none
+    }
+
+    /* Progress bar */
+    #prog-bar {
+      transition: width .4s cubic-bezier(.4, 0, .2, 1)
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 2px
+    }
+  </style>
+</head>
+
+<body>
+  <div id="toast-container"></div>
+
+  <!-- Sticky top bar -->
+  <div class="sticky top-0 z-30 bg-white border-b border-slate-100 shadow-sm">
+    <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <div
+          style="width:28px;height:28px;background:linear-gradient(135deg,#7c3aed,#2563eb);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+          <svg width="14" height="14" fill="none" stroke="white" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:#0f172a">FormCraft</span>
+      </div>
+      <!-- Progress info -->
+      <div id="prog-info" class="hidden items-center gap-3">
+        <span id="step-label" style="font-size:12px;color:#94a3b8;font-weight:500"></span>
+        <div style="width:80px;height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden">
+          <div id="prog-bar"
+            style="height:100%;background:linear-gradient(90deg,#7c3aed,#2563eb);width:0%;border-radius:3px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <main class="max-w-xl mx-auto px-4 pb-20">
+
+    <!-- Loading -->
+    <div id="st-loading" class="text-center py-24">
+      <div
+        style="width:40px;height:40px;border:4px solid #e2e8f0;border-top-color:#7c3aed;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px">
+      </div>
+      <p style="color:#94a3b8;font-size:14px">Loading form…</p>
+      <style>
+        @keyframes spin {
+          to {
+            transform: rotate(360deg)
+          }
+        }
+      </style>
+    </div>
+
+    <!-- Error -->
+    <div id="st-error" class="hidden text-center py-24">
+      <div style="font-size:48px;margin-bottom:16px">😕</div>
+      <h2 style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:8px">Form not found</h2>
+      <p style="color:#64748b;font-size:14px">This link may be invalid or expired.</p>
+    </div>
+
+    <!-- Closed -->
+    <div id="st-closed" class="hidden text-center py-24">
+      <div style="font-size:48px;margin-bottom:16px">🔒</div>
+      <h2 style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:8px" id="closed-title">Form Closed</h2>
+      <p id="closed-msg" style="color:#64748b;font-size:14px;max-width:300px;margin:0 auto">This form is currently not accepting responses.</p>
+    </div>
+
+    <!-- Form (Step Mode) -->
+    <div id="st-form" class="hidden pt-8">
+      <!-- Form Header -->
+      <div class="mb-8 fade-in">
+        <h1 id="form-title" style="font-size:24px;font-weight:800;color:#0f172a;margin-bottom:8px;line-height:1.3"></h1>
+        <p id="form-desc" style="color:#64748b;font-size:14px;line-height:1.6"></p>
+      </div>
+
+      <!-- Step Dots -->
+      <div id="step-dots" class="flex items-center gap-1.5 mb-8 flex-wrap"></div>
+
+      <!-- Step Container -->
+      <div id="step-container"></div>
+
+      <!-- Navigation -->
+      <div id="nav-btns" class="mt-8 space-y-3">
+        <button id="btn-next" class="btn-primary">Next →</button>
+        <button id="btn-back" class="btn-secondary hidden">← Back</button>
+      </div>
+    </div>
+
+    <!-- Success -->
+    <div id="st-success" class="hidden text-center py-16 fade-in">
+      <div
+        style="width:80px;height:80px;background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;box-shadow:0 8px 32px rgba(16,185,129,.3)"
+        class="check-anim">
+        <svg width="40" height="40" fill="none" stroke="white" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <h2 style="font-size:26px;font-weight:800;color:#0f172a;margin-bottom:8px">Submitted! 🎉</h2>
+      <p style="color:#64748b;font-size:15px;margin-bottom:32px;line-height:1.6">Your response has been recorded. Thank
+        you!</p>
+      <!-- Response summary -->
+      <div id="response-summary" class="text-left bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6"></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <button id="btn-download" class="btn-secondary" style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          Download PDF Copy
+        </button>
+        <button id="btn-again" class="btn-secondary">Fill Again</button>
+      </div>
+      <p style="margin-top:24px;font-size:12px;color:#94a3b8">Powered by <span
+          style="color:#7c3aed;font-weight:600">FormCraft</span></p>
+    </div>
+  </main>
+
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/logic.js"></script>
+  <script>
+    /* ── State ───────────────────────────────────────────────── */
+    let schema = null;
+    let values = {};          // { fieldId: value }
+    let steps = [];          // ordered visible field objects
+    let cur = 0;           // current step index
+    let lastResponse = null;
+    let slideDir = 'right';   // animation direction
+
+    /* ── Boot ────────────────────────────────────────────────── */
+    (async function init() {
+      const p = new URLSearchParams(location.search);
+      const encoded = p.get('schema');
+      const id = p.get('id');
+
+      document.getElementById('btn-next').addEventListener('click', goNext);
+      document.getElementById('btn-back').addEventListener('click', goBack);
+      document.getElementById('btn-download').addEventListener('click', downloadResponse);
+      document.getElementById('btn-again').addEventListener('click', resetForm);
+
+      // Short delay so the loading spinner shows
+      await new Promise(r => setTimeout(r, 300));
+
+      if (encoded) {
+        schema = decodeSchemaFromURL(encoded);
+      } else if (id) {
+        // 1. Try localStorage first (fast)
+        schema = loadFormById(id);
+        // 2. Fall back to Appwrite (cross-device sharing)
+        if (!schema && typeof loadFormFromAppwrite === 'function') {
+          try {
+            schema = await loadFormFromAppwrite(id);
+            // Cache locally so next load is instant
+            if (schema) saveForm(schema);
+          } catch (e) {
+            console.error('Appwrite form fetch failed:', e);
+          }
+        }
+      } else {
+        schema = loadCurrentSchema();
+      }
+
+      if (!schema || !schema.fields?.length) { showState('error'); return; }
+
+      // ── Open / Close checks
+      if (schema.isActive === false) {
+        document.getElementById('closed-title').textContent = 'Form Closed';
+        document.getElementById('closed-msg').textContent   = 'This form is currently not accepting responses.';
+        showState('closed'); return;
+      }
+      if (schema.closeAt && new Date() > new Date(schema.closeAt)) {
+        document.getElementById('closed-title').textContent = 'Submissions Closed';
+        document.getElementById('closed-msg').textContent   = 'This form is no longer accepting responses.';
+        showState('closed'); return;
+      }
+
+      document.title = schema.title + ' — FormCraft';
+      document.getElementById('form-title').textContent = schema.title;
+      document.getElementById('form-desc').textContent  = schema.description || '';
+      computeSteps();
+      renderStep();
+      showState('form');
+      document.getElementById('prog-info').classList.remove('hidden');
+      document.getElementById('prog-info').classList.add('flex');
+    })();
+
+    /* ── State Visibility ────────────────────────────────────── */
+    function showState(s) {
+      ['loading', 'error', 'closed', 'form', 'success'].forEach(id => {
+        document.getElementById('st-' + id).classList.toggle('hidden', id !== s);
+      });
+    }
+
+    /* ── Step Computation ────────────────────────────────────── */
+    function computeSteps() {
+      const visible = evaluateLogic(schema.fields, schema.logic, values);
+      steps = schema.fields.filter(f => visible.has(f.id));
+    }
+
+    /* ── Render Current Step ─────────────────────────────────── */
+    function renderStep() {
+      updateDots();
+      updateProgress();
+
+      const sc = document.getElementById('step-container');
+      const field = steps[cur];
+      if (!field) return;
+
+      const wrap = document.createElement('div');
+      wrap.className = slideDir === 'right' ? 'slide-in-right' : 'slide-in-left';
+
+      // Question number
+      const qNum = document.createElement('p');
+      qNum.style.cssText = 'font-size:12px;font-weight:600;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px';
+      qNum.textContent = `Question ${cur + 1} of ${steps.length}`;
+      wrap.appendChild(qNum);
+
+      // Label
+      const lbl = document.createElement('label');
+      lbl.style.cssText = 'display:block;font-size:20px;font-weight:700;color:#0f172a;margin-bottom:20px;line-height:1.4';
+      lbl.innerHTML = sanitize(field.label) + (field.required ? ' <span style="color:#ef4444">*</span>' : '');
+      wrap.appendChild(lbl);
+
+      // Input
+      const inp = buildInput(field);
+      wrap.appendChild(inp);
+
+      // Error msg
+      const err = document.createElement('p');
+      err.id = 'field-error';
+      err.style.cssText = 'color:#ef4444;font-size:13px;margin-top:10px;font-weight:500;display:none';
+      wrap.appendChild(err);
+
+      sc.innerHTML = '';
+      sc.appendChild(wrap);
+
+      // Focus input
+      setTimeout(() => {
+        const input = sc.querySelector('input:not([type=checkbox]),select,textarea');
+        if (input) input.focus();
+      }, 380);
+
+      // Back button
+      document.getElementById('btn-back').classList.toggle('hidden', cur === 0);
+
+      // Next button label
+      const nextBtn = document.getElementById('btn-next');
+      nextBtn.textContent = cur === steps.length - 1 ? '✓ Submit' : 'Next →';
+      nextBtn.style.background = cur === steps.length - 1
+        ? 'linear-gradient(135deg,#10b981,#059669)'
+        : 'linear-gradient(135deg,#7c3aed,#2563eb)';
+    }
+
+    /* ── Build Input Element ─────────────────────────────────── */
+    function buildInput(field) {
+      const val = values[field.id];
+      let el;
+
+      switch (field.type) {
+        case 'textarea':
+          el = document.createElement('textarea');
+          el.className = 'form-input';
+          el.placeholder = field.placeholder || '';
+          el.value = val || '';
+          el.rows = 4;
+          break;
+
+        case 'dropdown':
+          el = document.createElement('select');
+          el.className = 'form-input';
+          el.innerHTML = `<option value="">Select an option…</option>` +
+            (field.options || []).map(o => `<option value="${sanitize(o)}" ${val === o ? 'selected' : ''}>${sanitize(o)}</option>`).join('');
+          break;
+
+        case 'checkbox': {
+          const wrap = document.createElement('label');
+          wrap.className = 'cb-wrap';
+          const cb = document.createElement('input');
+          cb.type = 'checkbox'; cb.className = 'cb-input'; cb.dataset.fieldId = field.id;
+          cb.checked = val === true || val === 'true';
+          const span = document.createElement('div');
+          span.innerHTML = `<span style="font-size:16px;font-weight:600;color:#0f172a;display:block">${sanitize(field.placeholder || field.label)}</span>`;
+          wrap.appendChild(cb); wrap.appendChild(span);
+          return wrap;
+        }
+
+        case 'number':
+          el = document.createElement('input');
+          el.type = 'number'; el.className = 'form-input';
+          el.placeholder = field.placeholder || '0';
+          el.value = val ?? '';
+          break;
+
+        case 'email':
+          el = document.createElement('input');
+          el.type = 'email'; el.className = 'form-input';
+          el.placeholder = field.placeholder || 'you@example.com';
+          el.value = val || '';
+          break;
+
+        default:
+          el = document.createElement('input');
+          el.type = 'text'; el.className = 'form-input';
+          el.placeholder = field.placeholder || '';
+          el.value = val || '';
+      }
+
+      el.dataset.fieldId = field.id;
+      // Allow pressing Enter to advance
+      if (el.tagName !== 'TEXTAREA') {
+        el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); goNext(); } });
+      }
+      return el;
+    }
+
+    /* ── Navigation ──────────────────────────────────────────── */
+    function goNext() {
+      const field = steps[cur];
+      const input = document.querySelector(`[data-field-id="${field.id}"]`);
+
+      // Read value
+      let val;
+      if (input?.type === 'checkbox') val = input.checked;
+      else val = input?.value?.trim() ?? '';
+
+      // Validate
+      if (field.required && (val === '' || val === false || val === undefined)) {
+        showFieldError('This field is required');
+        if (input) { input.classList.add('error'); input.focus(); }
+        return;
+      }
+
+      // Store value
+      values[field.id] = val;
+      if (input) input.classList.remove('error');
+
+      // Re-compute visible steps (logic may change)
+      computeSteps();
+
+      if (cur < steps.length - 1) {
+        slideDir = 'right';
+        cur++;
+        renderStep();
+      } else {
+        submitForm();
+      }
+    }
+
+    function goBack() {
+      if (cur === 0) return;
+      slideDir = 'left';
+      cur--;
+      renderStep();
+    }
+
+    function showFieldError(msg) {
+      const el = document.getElementById('field-error');
+      if (el) { el.textContent = msg; el.style.display = 'block'; }
+    }
+
+    /* ── Progress & Dots ─────────────────────────────────────── */
+    function updateDots() {
+      const dotsEl = document.getElementById('step-dots');
+      dotsEl.innerHTML = steps.map((_, i) =>
+        `<span class="step-dot ${i === cur ? 'active' : i < cur ? 'done' : ''}"></span>`
+      ).join('');
+    }
+
+    function updateProgress() {
+      const pct = steps.length ? Math.round(((cur) / steps.length) * 100) : 0;
+      document.getElementById('prog-bar').style.width = pct + '%';
+      document.getElementById('step-label').textContent = `${cur + 1} / ${steps.length}`;
+    }
+
+    /* ── Submit ──────────────────────────────────────────────── */
+    function submitForm() {
+      // Collect final response (only from visible fields)
+      const visible = evaluateLogic(schema.fields, schema.logic, values);
+      const response = {};
+      schema.fields.forEach(f => {
+        if (visible.has(f.id) && values[f.id] !== undefined && values[f.id] !== '') {
+          response[f.label] = values[f.id];
+        }
+      });
+      lastResponse = { form: schema.title, submittedAt: new Date().toISOString(), data: response };
+      saveResponse(schema.id || 'unknown', response);
+      saveResponseToAppwrite(schema.id || 'unknown', response, schema.ownerId || 'anonymous');
+      renderResponseSummary(response);
+      showState('success');
+    }
+
+    function renderResponseSummary(response) {
+      const el = document.getElementById('response-summary');
+      const entries = Object.entries(response);
+      if (!entries.length) { el.style.display = 'none'; return; }
+      el.innerHTML = `<p style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Your Answers</p>` +
+        entries.map(([k, v]) => `
+      <div style="display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #f1f5f9">
+        <span style="font-size:13px;color:#64748b;font-weight:500">${sanitize(k)}</span>
+        <span style="font-size:13px;color:#0f172a;font-weight:600;text-align:right;max-width:60%">${sanitize(String(v))}</span>
+      </div>`
+        ).join('');
+    }
+
+    function downloadResponse() {
+      if (!lastResponse) return;
+      generateResponsePDF(lastResponse, schema.title);
+    }
+
+    /* ── PDF Generation ──────────────────────────────────────── */
+    function generateResponsePDF(responseObj, formTitle) {
+      const { jsPDF } = window.jspdf;
+      if (!jsPDF) { console.error('jsPDF not loaded'); return; }
+
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageW   = doc.internal.pageSize.getWidth();
+      const margin  = 48;
+      const contentW = pageW - margin * 2;
+      let y = margin;
+
+      // ── Header background strip
+      doc.setFillColor(124, 58, 237);          // violet-600
+      doc.rect(0, 0, pageW, 72, 'F');
+
+      // ── Form title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.setTextColor(255, 255, 255);
+      doc.text(String(formTitle || 'Form Response'), margin, 44);
+
+      y = 96;
+
+      // ── Metadata
+      const submittedAt = responseObj.submittedAt
+        ? new Date(responseObj.submittedAt).toLocaleString('en-US', {
+            weekday:'long', year:'numeric', month:'long', day:'numeric',
+            hour:'2-digit', minute:'2-digit'
+          })
+        : new Date().toLocaleString();
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);         // slate-500
+      doc.text('Submitted: ' + submittedAt, margin, y);
+      y += 8;
+
+      // ── Divider
+      doc.setDrawColor(226, 232, 240);         // slate-200
+      doc.setLineWidth(0.75);
+      doc.line(margin, y + 8, pageW - margin, y + 8);
+      y += 28;
+
+      // ── Section label
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(148, 163, 184);         // slate-400
+      doc.text('YOUR ANSWERS', margin, y);
+      y += 18;
+
+      // ── Field rows
+      const entries = Object.entries(responseObj.data || {});
+      if (!entries.length) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(11);
+        doc.setTextColor(148, 163, 184);
+        doc.text('No responses recorded.', margin, y);
+        y += 24;
+      } else {
+        entries.forEach(([label, value], idx) => {
+          // Row background (alternating)
+          if (idx % 2 === 0) {
+            doc.setFillColor(248, 250, 252);   // slate-50
+            doc.rect(margin - 8, y - 13, contentW + 16, 38, 'F');
+          }
+
+          // Label
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(11);
+          doc.setTextColor(51, 65, 85);        // slate-700
+          doc.text(String(label), margin, y);
+
+          // Value (with word wrap)
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+          doc.setTextColor(15, 23, 42);        // slate-950
+          const valStr  = String(value === true ? 'Yes' : value === false ? 'No' : value ?? '—');
+          const valLines = doc.splitTextToSize(valStr, contentW * 0.55);
+          const valX     = pageW - margin;
+          doc.text(valLines, valX, y, { align: 'right' });
+
+          const rowH = Math.max(38, valLines.length * 14 + 24);
+
+          // Subtle bottom border
+          doc.setDrawColor(241, 245, 249);
+          doc.setLineWidth(0.5);
+          doc.line(margin, y + rowH - 14, pageW - margin, y + rowH - 14);
+
+          y += rowH;
+
+          // Page break guard
+          if (y > doc.internal.pageSize.getHeight() - 80) {
+            doc.addPage();
+            y = margin;
+          }
+        });
+      }
+
+      // ── Final divider
+      y += 8;
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.75);
+      doc.line(margin, y, pageW - margin, y);
+      y += 20;
+
+      // ── Footer
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9);
+      doc.setTextColor(148, 163, 184);
+      doc.text('Generated by FormCraft  ·  formcraft.app', margin, y);
+
+      // ── Page numbers
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Page ${p} of ${totalPages}`, pageW - margin, doc.internal.pageSize.getHeight() - 24, { align: 'right' });
+      }
+
+      // ── Save
+      const slug = (formTitle || 'response').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+      doc.save(`${slug}_response.pdf`);
+    }
+
+    function resetForm() {
+      values = {}; cur = 0; lastResponse = null;
+      computeSteps(); renderStep();
+      showState('form');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+</body>
+
+</html>

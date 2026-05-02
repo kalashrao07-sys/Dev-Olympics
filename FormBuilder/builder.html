@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Builder — FormCraft</title>
+<script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
+<script src="js/appwrite.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *{font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
+  .grad{background:linear-gradient(135deg,#7c3aed,#2563eb)}
+  #field-panel{transition:transform .3s cubic-bezier(.4,0,.2,1)}
+  .field-row{animation:slideIn .2s ease both}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+  .btn-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:14px;transition:background .15s,color .15s;color:#64748b}
+  .btn-icon:hover{background:#334155;color:#fff}
+  label.form-label{display:block;font-size:.75rem;font-weight:500;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem}
+  .f-input{width:100%;background:#1e293b;border:1px solid #334155;border-radius:.75rem;padding:.625rem .875rem;font-size:.875rem;color:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+  .f-input:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.15)}
+  .f-input::placeholder{color:#475569}
+  select.f-input option{background:#1e293b}
+  .toggle-thumb{transition:transform .2s}
+  input:checked~.toggle-track{background:#7c3aed}
+  input:checked~.toggle-track .toggle-thumb{transform:translateX(20px)}
+  ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#0f172a}::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+</style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col">
+<div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- Panel Overlay -->
+<div id="panel-overlay" class="fixed inset-0 bg-black/50 z-30 hidden backdrop-blur-sm"></div>
+
+<!-- Field Panel -->
+<aside id="field-panel" class="fixed right-0 top-0 h-full w-full sm:w-96 bg-slate-900 border-l border-slate-800 z-40 translate-x-full flex flex-col shadow-2xl">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800 flex-shrink-0">
+    <h2 id="panel-title" class="font-semibold text-white">Add Field</h2>
+    <button id="field-panel-close" class="btn-icon">✕</button>
+  </div>
+  <form id="field-form" class="flex-1 overflow-y-auto p-5 space-y-5">
+    <div>
+      <label class="form-label">Field Type</label>
+      <select id="field-type" class="f-input">
+        <option value="text">Short Text</option>
+        <option value="textarea">Long Text</option>
+        <option value="number">Number</option>
+        <option value="email">Email</option>
+        <option value="dropdown">Dropdown</option>
+        <option value="checkbox">Checkbox</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Label <span class="text-rose-400 normal-case">*</span></label>
+      <input id="field-label" type="text" class="f-input" placeholder="e.g. Full Name" required/>
+    </div>
+    <div>
+      <label class="form-label">Placeholder / Helper Text</label>
+      <input id="field-placeholder" type="text" class="f-input" placeholder="e.g. Enter your full name"/>
+    </div>
+    <div id="dropdown-group" class="hidden">
+      <label class="form-label">Options <span class="text-slate-600 normal-case">(one per line)</span></label>
+      <textarea id="field-options" class="f-input" rows="5" placeholder="Option A&#10;Option B&#10;Option C"></textarea>
+    </div>
+    <div class="flex items-center justify-between bg-slate-800 rounded-xl px-4 py-3">
+      <div>
+        <p class="text-sm font-medium text-white">Required</p>
+        <p class="text-xs text-slate-500 mt-0.5">Must be answered</p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input id="field-required" type="checkbox" class="sr-only peer"/>
+        <div class="w-11 h-6 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:bg-violet-600 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+      </label>
+    </div>
+    <button type="submit" class="w-full grad text-white py-2.5 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity shadow-lg shadow-violet-500/20">Save Field</button>
+  </form>
+</aside>
+
+<!-- Top Bar -->
+<header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl sticky top-0 z-20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 h-15 flex items-center justify-between gap-4 py-3">
+    <div class="flex items-center gap-3 min-w-0">
+      <a href="index.html" class="text-slate-500 hover:text-white transition-colors flex-shrink-0">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <div class="w-px h-5 bg-slate-800 flex-shrink-0"></div>
+      <div class="w-7 h-7 rounded-lg grad flex items-center justify-center flex-shrink-0">
+        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      </div>
+      <span class="text-sm font-semibold truncate hidden sm:block">FormCraft Builder</span>
+      <span id="autosave-label" class="text-xs text-slate-600 hidden sm:block flex-shrink-0">Auto-saved</span>
+    </div>
+    <div class="flex items-center gap-1.5 flex-shrink-0">
+      <button id="btn-share" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" title="Copy share link">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+        Share
+      </button>
+      <button id="btn-preview" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white bg-slate-800 border border-slate-700 hover:border-slate-600 transition-all">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        Preview
+      </button>
+      <button id="btn-save" class="flex items-center gap-1.5 grad text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity shadow-md shadow-violet-500/20">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+        Save
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Page Body -->
+<div class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-7">
+  <!-- Form Meta -->
+  <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="form-label">Form Title</label>
+        <input id="form-title" type="text" class="f-input !bg-slate-800" placeholder="e.g. Event Registration 2025"/>
+      </div>
+      <div>
+        <label class="form-label">Description <span class="text-slate-700 normal-case">(optional)</span></label>
+        <input id="form-desc" type="text" class="f-input !bg-slate-800" placeholder="Brief description of this form"/>
+      </div>
+    </div>
+    <!-- Form Settings -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-800">
+      <div class="flex items-center justify-between bg-slate-800/60 rounded-xl px-4 py-3">
+        <div>
+          <p class="text-sm font-medium text-white">Accept Responses</p>
+          <p class="text-xs text-slate-500 mt-0.5">Toggle to open or close form</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+          <input id="form-active" type="checkbox" class="sr-only peer" checked/>
+          <div class="w-11 h-6 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:bg-violet-600 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+        </label>
+      </div>
+      <div>
+        <label class="form-label">Auto-close At <span class="text-slate-700 normal-case">(optional)</span></label>
+        <input id="form-close-at" type="datetime-local" class="f-input !bg-slate-800 [color-scheme:dark]"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Fields Column -->
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-semibold text-white">Form Fields</h2>
+          <span id="field-count" class="text-xs bg-violet-500/15 text-violet-300 px-2 py-0.5 rounded-full font-medium">0</span>
+        </div>
+        <button id="btn-add-field" class="flex items-center gap-1.5 grad text-white px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity shadow-md shadow-violet-500/20">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Add Field
+        </button>
+      </div>
+      <div id="fields-empty" class="bg-slate-900/60 border border-dashed border-slate-800 rounded-2xl p-10 text-center">
+        <p class="text-slate-500 text-sm font-medium mb-1">No fields yet</p>
+        <p class="text-slate-700 text-xs">Click "Add Field" to start building</p>
+      </div>
+      <div id="fields-list" class="space-y-2"></div>
+    </div>
+
+    <!-- Logic Column -->
+    <div>
+      <div class="flex items-center gap-2 mb-4">
+        <h2 class="text-sm font-semibold text-white">Conditional Logic</h2>
+        <span id="rule-count" class="text-xs bg-blue-500/15 text-blue-300 px-2 py-0.5 rounded-full font-medium">0</span>
+      </div>
+
+      <!-- Rule Builder Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-4">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-4">New Rule</p>
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="form-label">IF field</label>
+              <select id="rule-source" class="f-input"><option value="">— Source —</option></select>
+            </div>
+            <div>
+              <label class="form-label">Operator</label>
+              <select id="rule-operator" class="f-input"><option value="">— Operator —</option></select>
+            </div>
+          </div>
+          <div id="rule-value-row">
+            <label class="form-label">Value</label>
+            <input id="rule-value" type="text" class="f-input" placeholder="Comparison value"/>
+          </div>
+          <div>
+            <label class="form-label">THEN show</label>
+            <select id="rule-target" class="f-input"><option value="">— Target —</option></select>
+          </div>
+          <button id="btn-add-rule" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add Rule
+          </button>
+        </div>
+      </div>
+
+      <div id="rules-empty" class="bg-slate-900/60 border border-dashed border-slate-800 rounded-2xl p-8 text-center mb-2">
+        <p class="text-slate-500 text-sm font-medium mb-1">No rules yet</p>
+        <p class="text-slate-700 text-xs">Add fields first, then define logic</p>
+      </div>
+      <div id="rules-list" class="space-y-2"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/storage.js"></script><script src="js/app.js"></script><script src="js/logic.js"></script><script src="js/builder.js"></script>
+</body></html>

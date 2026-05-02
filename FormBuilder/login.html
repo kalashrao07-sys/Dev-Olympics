@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Welcome — FormCraft</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *{font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
+  .grad{background:linear-gradient(135deg,#7c3aed,#2563eb)}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  .fade-up{animation:fadeUp .5s ease both}
+  .inp{display:block;width:100%;background:#1e293b;border:1.5px solid #334155;border-radius:12px;padding:14px 16px;font-size:15px;color:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+  .inp:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.15)}
+  .inp::placeholder{color:#475569}
+</style>
+</head>
+<body class="bg-slate-950 min-h-screen flex items-center justify-center px-4">
+<div class="w-full max-w-sm fade-up">
+  <!-- Logo -->
+  <div class="text-center mb-8">
+    <div class="w-14 h-14 rounded-2xl grad flex items-center justify-center mx-auto mb-4 shadow-xl shadow-violet-500/30">
+      <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+      </svg>
+    </div>
+    <h1 class="text-2xl font-black text-white tracking-tight">FormCraft</h1>
+    <p class="text-slate-500 text-sm mt-1">Smart Logic-Driven Form Engine</p>
+  </div>
+
+  <!-- Card -->
+  <div class="bg-slate-900 border border-slate-800 rounded-2xl p-7 shadow-2xl">
+    <h2 class="text-lg font-bold text-white mb-1">Get started</h2>
+    <p class="text-slate-500 text-sm mb-6">Enter your name to identify your forms. No password needed.</p>
+
+    <form id="login-form">
+      <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Your Name or Email</label>
+      <input id="user-input" type="text" class="inp mb-5" placeholder="e.g. Jane Doe or jane@example.com" autocomplete="name" required/>
+      <p id="err-msg" class="text-rose-400 text-xs mb-3 hidden">Please enter your name to continue.</p>
+      <button type="submit" class="w-full grad text-white py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-violet-500/25">
+        Continue →
+      </button>
+    </form>
+  </div>
+
+  <p class="text-center text-xs text-slate-700 mt-6">Your forms are saved privately to your browser.</p>
+</div>
+
+<script>
+  // If already logged in, skip to dashboard
+  if (localStorage.getItem('userId') && localStorage.getItem('userName')) {
+    location.href = 'index.html';
+  }
+
+  document.getElementById('login-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const val = document.getElementById('user-input').value.trim();
+    if (!val) { document.getElementById('err-msg').classList.remove('hidden'); return; }
+    // Generate a stable userId
+    const uid = 'u_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem('userId', uid);
+    localStorage.setItem('userName', val);
+    location.href = 'index.html';
+  });
+</script>
+</body>
+</html>
